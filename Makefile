@@ -1,7 +1,7 @@
 PKG_MODULES = gtk+-2.0 vte
 PKG_CFLAGS = $(shell pkg-config ${PKG_MODULES} --cflags)
 PKG_LIBS = $(shell pkg-config ${PKG_MODULES} --libs)
-CFLAGS = -g ${PKG_CFLAGS}
+CFLAGS = -g -Wall -std=gnu99 ${PKG_CFLAGS}
 SOURCES = main.c
 OBJECTS = ${SOURCES:.c=.o}
 
