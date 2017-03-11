@@ -14,3 +14,13 @@ the code should build against gtk3 and vte3 as well.
 ### Installing software
 
 ![Installing software](http://imgur.com/7Si2Hryl.png)
+
+![Installing software with details expanded](http://imgur.com/Vo106m1l.png)
+
+![Installation complete](http://imgur.com/tAW0N7kl.png)
+
+![Installation complete with details expanded](http://imgur.com/ZAHN9hal.png)
+
+![Errors](http://imgur.com/DNRIkq4l.png)
+
+![Errors with details expanded](http://imgur.com/UBZHJ3ol.png)
