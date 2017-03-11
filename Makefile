@@ -1,12 +1,13 @@
-PKG_MODULES = gtk+-2.0 vte
+PKG_MODULES = gtk+-2.0 vte gdk-pixbuf-2.0
 PKG_CFLAGS = $(shell pkg-config ${PKG_MODULES} --cflags)
 PKG_LIBS = $(shell pkg-config ${PKG_MODULES} --libs)
-CFLAGS = -g -Wall -std=gnu99 ${PKG_CFLAGS}
+CFLAGS = -g -Wall -std=gnu99 ${PKG_CFLAGS} -DSHAREDIR=\"${prefix}/share/apk-gtk\"
 SOURCES = main.c
 OBJECTS = ${SOURCES:.c=.o}
 
 prefix = /usr
 bindir = ${prefix}/bin
+sharedir = ${prefix}/share
 
 %.o: %.c
 	${CC} ${CFLAGS} -c $< -o $@
@@ -20,3 +21,4 @@ clean:
 all: apk-gtk
 install: apk-gtk
 	install -Dm755 apk-gtk $(DESTDIR)$(bindir)/apk-gtk
+	install -Dm644 apk-gtk.svg $(DESTDIR)$(sharedir)/apk-gtk/apk-gtk.svg

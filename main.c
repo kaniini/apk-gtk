@@ -22,20 +22,64 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #include <gtk/gtk.h>
 #include <vte/vte.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
 
 #define P_READ		0
 #define P_WRITE		1
 
-gchar *arg_status_str = "Processing a package manager transaction";
-gchar *arg_title_str = "Package manager";
+typedef enum {
+	OP_ADD,
+	OP_DEL,
+	OP_UPGRADE,
+	OP_UPDATE,
+	OP_FIX,
+	OP_COUNT
+} PackageOp;
+
+gchar *default_status_str[OP_COUNT] = {
+	[OP_ADD] = "Installing software",
+	[OP_DEL] = "Deleting software",
+	[OP_UPGRADE] = "Updating software",
+	[OP_UPDATE] = "Updating repository lists",
+	[OP_FIX] = "Fixing software",
+};
+
+gchar *default_status_desc_str[OP_COUNT] = {
+	[OP_ADD] = "New software is being installed.  This may take a few minutes.  Please wait.",
+	[OP_DEL] = "Software is being deleted.  This may take a few minutes.  Please wait.",
+	[OP_UPGRADE] = "Software is being upgraded.  This may take a few minutes.  Please wait.",
+	[OP_UPDATE] = "The configured repositories will be checked for updates.",
+	[OP_FIX] = "Attempting to fix software problems.  This may take a few minutes.  Please wait.",
+};
+
+gchar *op_map[OP_COUNT] = {
+	[OP_ADD] = "add",
+	[OP_DEL] = "del",
+	[OP_UPGRADE] = "upgrade",
+	[OP_UPDATE] = "update",
+	[OP_FIX] = "fix",
+};
+
+gchar *arg_status_str = NULL;
+gchar *arg_status_desc_str = NULL;
+gchar *arg_complete_str = "Operation completed successfully";
+gchar *arg_complete_desc_str = "The requested operation completed successfully.  You may close this window at any time.";
+gchar *arg_title_str = "Installer";
 
 typedef struct {
 	GtkWidget *mainwin;
 	GtkWidget *mainwin_vbox;
+	GtkWidget *mainwin_hbox;
+	GtkWidget *mainwin_icon;
+	GdkPixbuf *mainwin_pixbuf;
+
+	GtkWidget *status_vbox;
 	GtkWidget *status_str;
+	GtkWidget *status_desc_str;
 	GtkWidget *vte;
 	GtkWidget *vte_expander;
 	GtkWidget *progress_bar;
@@ -69,13 +113,32 @@ mainwin_new(Transaction *t)
 	gtk_container_add(GTK_CONTAINER(t->mainwin), t->mainwin_vbox);
 	gtk_widget_show(t->mainwin_vbox);
 
+	t->mainwin_hbox = gtk_hbox_new(FALSE, 8);
+	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->mainwin_hbox, FALSE, FALSE, 0);
+	gtk_widget_show(t->mainwin_hbox);
+
+	t->mainwin_pixbuf = gdk_pixbuf_new_from_file_at_size(SHAREDIR "/apk-gtk.svg", 64, 64, NULL);
+	t->mainwin_icon = gtk_image_new_from_pixbuf(t->mainwin_pixbuf);
+	gtk_box_pack_start(GTK_BOX(t->mainwin_hbox), t->mainwin_icon, FALSE, FALSE, 0);
+	gtk_widget_show(t->mainwin_icon);
+
+	t->status_vbox = gtk_vbox_new(FALSE, 8);
+	gtk_box_pack_start(GTK_BOX(t->mainwin_hbox), t->status_vbox, FALSE, FALSE, 0);
+	gtk_widget_show(t->status_vbox);
+
 	t->status_str = gtk_label_new(NULL);
-	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->status_str, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(t->status_vbox), t->status_str, FALSE, FALSE, 0);
 	markup = g_markup_printf_escaped("<big>%s</big>", arg_status_str);
 	gtk_label_set_markup(GTK_LABEL(t->status_str), markup);
 	gtk_misc_set_alignment(GTK_MISC(t->status_str), 0, 0); 
 	g_free(markup);
 	gtk_widget_show(t->status_str);
+
+	t->status_desc_str = gtk_label_new(arg_status_desc_str);
+	gtk_box_pack_start(GTK_BOX(t->status_vbox), t->status_desc_str, FALSE, FALSE, 0);
+	gtk_label_set_line_wrap(GTK_LABEL(t->status_desc_str), TRUE);
+	gtk_widget_set_size_request(t->status_desc_str, 425, -1);
+	gtk_widget_show(t->status_desc_str);
 
 	t->progress_bar = gtk_progress_bar_new();
 	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->progress_bar, FALSE, FALSE, 0);
@@ -171,8 +234,48 @@ transaction_child_watch_cb(GPid pid, gint status, gpointer data)
 {
 	Transaction *t = data;
 
+	if (status == 0)
+	{
+		gchar *markup;
+
+		markup = g_markup_printf_escaped("<big>%s</big>", arg_complete_str);
+		gtk_label_set_markup(GTK_LABEL(t->status_str), markup);
+		g_free(markup);
+
+		gtk_label_set_text(GTK_LABEL(t->status_desc_str), arg_complete_desc_str);
+	}
+
 	gtk_widget_set_sensitive(t->mainwin_close_btn, TRUE);
 	g_spawn_close_pid(pid);
+}
+
+void
+transaction_determine_op(GList *args)
+{
+	for (GList *arg_iter = args; arg_iter != NULL; arg_iter = arg_iter->next)
+	{
+		char *arg = arg_iter->data;
+
+		if (*arg == '-')
+			continue;
+
+		for (size_t i = 0; i < OP_COUNT; i++)
+		{
+			if (!op_map[i])
+				continue;
+
+			if (strcmp(arg, op_map[i]))
+				continue;
+
+			if (arg_status_str == NULL)
+				arg_status_str = default_status_str[i];
+
+			if (arg_status_desc_str == NULL)
+				arg_status_desc_str = default_status_desc_str[i];
+
+			return;
+		}
+	}
 }
 
 Transaction *
@@ -181,6 +284,8 @@ transaction_new(GList *args)
 	GError *error = NULL;
 	Transaction *t = g_new0(Transaction, 1);
 	gsize n = 0;
+
+	transaction_determine_op(args);
 
 	if (pipe(t->pipe_progress) < 0)
 	{
@@ -237,6 +342,7 @@ transaction_new(GList *args)
 void
 transaction_destroy(Transaction *t)
 {
+	g_free(t->apk_argv);
 	g_free(t);
 }
 
