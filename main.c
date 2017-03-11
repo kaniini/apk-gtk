@@ -107,6 +107,9 @@ mainwin_new(Transaction *t)
 {
 	char *markup;
 
+	t->mainwin_pixbuf = gdk_pixbuf_new_from_file_at_size(SHAREDIR "/apk-gtk.svg", 64, 64, NULL);
+	gtk_window_set_default_icon(t->mainwin_pixbuf);
+
 	t->mainwin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(t->mainwin), arg_title_str);
 	gtk_window_set_resizable(GTK_WINDOW(t->mainwin), FALSE);
@@ -120,7 +123,6 @@ mainwin_new(Transaction *t)
 	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->mainwin_hbox, FALSE, FALSE, 0);
 	gtk_widget_show(t->mainwin_hbox);
 
-	t->mainwin_pixbuf = gdk_pixbuf_new_from_file_at_size(SHAREDIR "/apk-gtk.svg", 64, 64, NULL);
 	t->mainwin_icon = gtk_image_new_from_pixbuf(t->mainwin_pixbuf);
 	gtk_box_pack_start(GTK_BOX(t->mainwin_hbox), t->mainwin_icon, FALSE, FALSE, 0);
 	gtk_widget_show(t->mainwin_icon);
