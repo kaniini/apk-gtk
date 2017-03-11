@@ -16,3 +16,6 @@ Makefile.in
 /install-sh
 /missing
 /stamp-h1
+
+apk-gtk
+*.o
