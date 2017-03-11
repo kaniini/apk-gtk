@@ -9,6 +9,8 @@ management GUI.
 Right now, gtk2 is used because the main Alpine desktop is gtk2, but in theory
 the code should build against gtk3 and vte3 as well.
 
+This does *not* deal with privilege elevation, pkexec should be used.
+
 ## Screenshots
 
 ![Installing software](http://imgur.com/7Si2Hryl.png)
