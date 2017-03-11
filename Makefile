@@ -22,3 +22,4 @@ all: apk-gtk
 install: apk-gtk
 	install -Dm755 apk-gtk $(DESTDIR)$(bindir)/apk-gtk
 	install -Dm644 apk-gtk.svg $(DESTDIR)$(sharedir)/apk-gtk/apk-gtk.svg
+	install -Dm644 apk-gtk.policy $(DESTDIR)$(sharedir)/polkit-1/actions/org.dereferenced.apk-gtk.policy
