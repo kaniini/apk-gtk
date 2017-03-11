@@ -68,6 +68,8 @@ gchar *arg_status_str = NULL;
 gchar *arg_status_desc_str = NULL;
 gchar *arg_complete_str = "Operation completed successfully";
 gchar *arg_complete_desc_str = "The requested operation completed successfully.  You may close this window at any time.";
+gchar *arg_error_str = "Operation completed with errors";
+gchar *arg_error_desc_str = "The requested operation completed with errors.  Click on 'Details' to see the errors.";
 gchar *arg_title_str = "Installer";
 
 typedef struct {
@@ -233,17 +235,13 @@ void
 transaction_child_watch_cb(GPid pid, gint status, gpointer data)
 {
 	Transaction *t = data;
+	gchar *markup;
 
-	if (status == 0)
-	{
-		gchar *markup;
+	markup = g_markup_printf_escaped("<big>%s</big>", status == 0 ? arg_complete_str : arg_error_str);
+	gtk_label_set_markup(GTK_LABEL(t->status_str), markup);
+	g_free(markup);
 
-		markup = g_markup_printf_escaped("<big>%s</big>", arg_complete_str);
-		gtk_label_set_markup(GTK_LABEL(t->status_str), markup);
-		g_free(markup);
-
-		gtk_label_set_text(GTK_LABEL(t->status_desc_str), arg_complete_desc_str);
-	}
+	gtk_label_set_text(GTK_LABEL(t->status_desc_str), status == 0 ? arg_complete_desc_str : arg_error_desc_str);
 
 	gtk_widget_set_sensitive(t->mainwin_close_btn, TRUE);
 	g_spawn_close_pid(pid);
