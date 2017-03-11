@@ -38,6 +38,8 @@ typedef struct {
 	GtkWidget *status_str;
 	GtkWidget *vte;
 	GtkWidget *progress_bar;
+	GtkWidget *mainwin_bbox;
+	GtkWidget *mainwin_close_btn;
 
 	GIOChannel *progress_ioc;
 	GIOChannel *stdout_ioc;
@@ -62,12 +64,12 @@ mainwin_new(Transaction *t)
 	gtk_window_set_title(GTK_WINDOW(t->mainwin), arg_title_str);
 	gtk_container_set_border_width(GTK_CONTAINER(t->mainwin), 16);
 
-	t->mainwin_vbox = gtk_vbox_new(FALSE, 0);
+	t->mainwin_vbox = gtk_vbox_new(FALSE, 8);
 	gtk_container_add(GTK_CONTAINER(t->mainwin), t->mainwin_vbox);
 	gtk_widget_show(t->mainwin_vbox);
 
 	t->status_str = gtk_label_new(NULL);
-	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->status_str, FALSE, FALSE, 16);
+	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->status_str, FALSE, FALSE, 0);
 	markup = g_markup_printf_escaped("<big>%s</big>", arg_status_str);
 	gtk_label_set_markup(GTK_LABEL(t->status_str), markup);
 	gtk_misc_set_alignment(GTK_MISC(t->status_str), 0, 0); 
@@ -75,15 +77,59 @@ mainwin_new(Transaction *t)
 	gtk_widget_show(t->status_str);
 
 	t->progress_bar = gtk_progress_bar_new();
-	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->progress_bar, FALSE, FALSE, 16);
+	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->progress_bar, FALSE, FALSE, 0);
 	gtk_widget_show(t->progress_bar);
 
 	t->vte = vte_terminal_new();
-	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->vte, FALSE, FALSE, 16);
+	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->vte, FALSE, FALSE, 0);
 	gtk_widget_show(t->vte);
+
+	t->mainwin_bbox = gtk_hbutton_box_new();
+	gtk_button_box_set_layout(GTK_BUTTON_BOX(t->mainwin_bbox), GTK_BUTTONBOX_END);
+	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->mainwin_bbox, FALSE, FALSE, 0);
+	gtk_widget_show(t->mainwin_bbox);
+
+	t->mainwin_close_btn = gtk_button_new_from_stock(GTK_STOCK_CLOSE);
+	gtk_box_pack_end(GTK_BOX(t->mainwin_bbox), t->mainwin_close_btn, FALSE, FALSE, 0);
+	gtk_widget_set_sensitive(t->mainwin_close_btn, FALSE);
+	gtk_widget_show(t->mainwin_close_btn);
+
+	/* XXX: block closing the window when child process is still running */
+	g_signal_connect(G_OBJECT(t->mainwin), "delete-event", G_CALLBACK(gtk_main_quit), NULL);
+	g_signal_connect(G_OBJECT(t->mainwin_close_btn), "clicked", G_CALLBACK(gtk_main_quit), NULL);
 
 	gtk_widget_show(t->mainwin);
 	return t->mainwin;
+}
+
+gboolean
+mainwin_transaction_progress_io_cb(GIOChannel *io, GIOCondition condition, gpointer data)
+{
+	Transaction *t = data;
+	GError *error = NULL;
+	gchar *line;
+	gsize len;
+
+	if (g_io_channel_read_line(io, &line, &len, NULL, &error) != G_IO_STATUS_NORMAL)
+	{
+		fprintf(stderr, "i/o error: %s\n", error->message);
+		abort();
+	}
+
+	double done, total;
+	if (sscanf(line, "%lf/%lf", &done, &total) == 2)
+	{
+		if (!total)
+			goto out;
+
+		double progress = done / total;
+		gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(t->progress_bar), progress);
+	}
+
+out:
+	g_free(line);
+
+	return TRUE;
 }
 
 gboolean
@@ -110,6 +156,17 @@ mainwin_transaction_output_io_cb(GIOChannel *io, GIOCondition condition, gpointe
 void
 transaction_child_setup(gpointer data)
 {
+	int fd = *(int *) data;
+	close(fd);
+}
+
+void
+transaction_child_watch_cb(GPid pid, gint status, gpointer data)
+{
+	Transaction *t = data;
+
+	gtk_widget_set_sensitive(t->mainwin_close_btn, TRUE);
+	g_spawn_close_pid(pid);
 }
 
 Transaction *
@@ -150,13 +207,17 @@ transaction_new(GList *args)
 
 	if (!g_spawn_async_with_pipes(NULL, t->apk_argv, NULL,
 		G_SPAWN_LEAVE_DESCRIPTORS_OPEN | G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN | G_SPAWN_DO_NOT_REAP_CHILD,
-		transaction_child_setup, NULL,
+		transaction_child_setup, &t->pipe_progress[P_READ],
 		&t->child_pid, NULL,
 		t->pipe_stdout, t->pipe_stderr, &error))
 	{
 		fprintf(stderr, "cant spawn: %s\n", error->message);
 		abort();
 	}
+	g_child_watch_add(t->child_pid, transaction_child_watch_cb, t);
+
+	t->progress_ioc = g_io_channel_unix_new(t->pipe_progress[P_READ]);
+	g_io_add_watch(t->progress_ioc, G_IO_IN, mainwin_transaction_progress_io_cb, t);
 
 	t->stdout_ioc = g_io_channel_unix_new(t->pipe_stdout[P_READ]);
 	g_io_add_watch(t->stdout_ioc, G_IO_IN, mainwin_transaction_output_io_cb, t);
