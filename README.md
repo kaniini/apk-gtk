@@ -13,4 +13,4 @@ the code should build against gtk3 and vte3 as well.
 
 ### Installing software
 
-![http://imgur.com/7Si2Hryl.png]
+![Installing software](http://imgur.com/7Si2Hryl.png)
