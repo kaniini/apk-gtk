@@ -37,6 +37,7 @@ typedef struct {
 	GtkWidget *mainwin_vbox;
 	GtkWidget *status_str;
 	GtkWidget *vte;
+	GtkWidget *vte_expander;
 	GtkWidget *progress_bar;
 	GtkWidget *mainwin_bbox;
 	GtkWidget *mainwin_close_btn;
@@ -80,8 +81,13 @@ mainwin_new(Transaction *t)
 	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->progress_bar, FALSE, FALSE, 0);
 	gtk_widget_show(t->progress_bar);
 
+	t->vte_expander = gtk_expander_new("Details");
+	gtk_expander_set_spacing(GTK_EXPANDER(t->vte_expander), 8);
+	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->vte_expander, FALSE, FALSE, 0);
+	gtk_widget_show(t->vte_expander);
+
 	t->vte = vte_terminal_new();
-	gtk_box_pack_start(GTK_BOX(t->mainwin_vbox), t->vte, FALSE, FALSE, 0);
+	gtk_container_add(GTK_CONTAINER(t->vte_expander), t->vte);
 	gtk_widget_show(t->vte);
 
 	t->mainwin_bbox = gtk_hbutton_box_new();
