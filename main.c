@@ -250,7 +250,7 @@ transaction_child_watch_cb(GPid pid, gint status, gpointer data)
 	g_spawn_close_pid(pid);
 }
 
-void
+gboolean
 transaction_determine_op(GList *args)
 {
 	for (GList *arg_iter = args; arg_iter != NULL; arg_iter = arg_iter->next)
@@ -274,9 +274,11 @@ transaction_determine_op(GList *args)
 			if (arg_status_desc_str == NULL)
 				arg_status_desc_str = default_status_desc_str[i];
 
-			return;
+			return TRUE;
 		}
 	}
+
+	return FALSE;
 }
 
 Transaction *
@@ -286,7 +288,11 @@ transaction_new(GList *args)
 	Transaction *t = g_new0(Transaction, 1);
 	gsize n = 0;
 
-	transaction_determine_op(args);
+	if (!transaction_determine_op(args))
+	{
+		fprintf(stderr, "unsupported operation type requested\n");
+		exit(EXIT_FAILURE);
+	}
 
 	if (pipe(t->pipe_progress) < 0)
 	{
