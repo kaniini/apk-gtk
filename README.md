@@ -6,8 +6,8 @@ This is a Gtk+ frontend to apk(1) for the transaction-related commands
 It is meant to be used with other tools to provide a full package
 management GUI.
 
-Right now, gtk2 is used because the main Alpine desktop is gtk2, but in theory
-the code should build against gtk3 and vte3 as well.
+By default, we build against gtk2, but if you use `make GTK_VERSION=3` it will build
+against gtk3.
 
 This does *not* deal with privilege elevation, pkexec should be used.  A reasonable
 default policy is installed in the appropriate location for most systems to allow for
