@@ -1,4 +1,15 @@
-PKG_MODULES = gtk+-2.0 vte gdk-pixbuf-2.0
+GTK_VERSION := 2
+
+ifeq ($(GTK_VERSION),2)
+
+   PKG_MODULES = gtk+-2.0 vte gdk-pixbuf-2.0
+
+else
+
+   PKG_MODULES = gtk+-3.0 vte-2.91 gdk-pixbuf-2.0
+
+endif
+
 PKG_CFLAGS = $(shell pkg-config ${PKG_MODULES} --cflags)
 PKG_LIBS = $(shell pkg-config ${PKG_MODULES} --libs)
 CFLAGS = -g -Wall -std=gnu99 ${PKG_CFLAGS} -DSHAREDIR=\"${prefix}/share/apk-gtk\"
@@ -16,7 +27,7 @@ apk-gtk: ${OBJECTS}
 	${CC} -o $@ ${OBJECTS} ${PKG_LIBS}
 
 clean:
-	rm apk-gtk *.o
+	rm -f apk-gtk *.o
 
 all: apk-gtk
 install: apk-gtk
