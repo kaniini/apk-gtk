@@ -113,6 +113,7 @@ mainwin_new(Transaction *t)
 	t->mainwin = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(t->mainwin), arg_title_str);
 	gtk_window_set_resizable(GTK_WINDOW(t->mainwin), FALSE);
+	gtk_window_set_deletable(GTK_WINDOW(t->mainwin), FALSE);
 	gtk_container_set_border_width(GTK_CONTAINER(t->mainwin), 16);
 
 	t->mainwin_vbox = gtk_vbox_new(FALSE, 8);
